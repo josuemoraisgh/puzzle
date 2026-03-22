@@ -1,4 +1,4 @@
-name: Web qip
+name: Deploy MoodleQuiz Live
 
 on:
   push:
