@@ -44,6 +44,15 @@ class StudentController extends ChangeNotifier {
   QuestionEntity? get currentQuestion => _currentQuestion;
   List<ScoreEntity> get scores => _scores;
   String? get selectedChoice => _selectedChoice;
+
+  /// Pontuação do próprio aluno (null se ainda não pontuou).
+  ScoreEntity? myScore(String userId) {
+    try {
+      return _scores.firstWhere((s) => s.studentId == userId);
+    } catch (_) {
+      return null;
+    }
+  }
   bool get hasAnswered => _hasAnswered;
   bool get isSubmitting => _isSubmitting;
   bool get lastAnswerCorrect => _lastAnswerCorrect;

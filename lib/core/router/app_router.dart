@@ -9,6 +9,7 @@ import '../../presentation/pages/professor/course_selection_page.dart';
 import '../../presentation/pages/professor/quiz_selection_page.dart';
 import '../../presentation/pages/professor/professor_home_page.dart';
 import '../../presentation/pages/professor/qrcode_page.dart';
+import '../../presentation/pages/professor/professor_reveal_page.dart';
 import '../../presentation/pages/professor/ranking_page.dart';
 import '../../presentation/pages/student/student_lobby_page.dart';
 
@@ -21,6 +22,7 @@ class AppRouter {
   static const String professor = '/professor';
   static const String professorRank = '/professor/rank';
   static const String professorQrCode = '/professor/qrcode';
+  static const String professorReveal = '/professor/reveal';
   static const String student = '/student';
 
   static GoRouter build(BuildContext context) {
@@ -59,6 +61,7 @@ class AppRouter {
           ],
         ),
         GoRoute(path: professorQrCode, builder: (_, __) => const QrCodePage()),
+        GoRoute(path: professorReveal, builder: (_, __) => const ProfessorRevealPage()),
         GoRoute(path: student, builder: (_, __) => const StudentLobbyPage()),
       ],
     );

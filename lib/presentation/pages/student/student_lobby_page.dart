@@ -7,6 +7,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../domain/entities/quiz_state_entity.dart';
+import '../../../domain/entities/score_entity.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/student_controller.dart';
 import 'student_question_page.dart';
@@ -92,18 +93,22 @@ class _StudentLobbyPageState extends State<StudentLobbyPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final myScore = student.myScore(auth.user!.id.toString());
+
     // Questão fechada → mostra resultado
     if (state.isClosed) {
       return _ClosedQuestionView(
         wasCorrect: student.lastAnswerCorrect,
         answered: student.hasAnswered,
         selectedText: _selectedChoiceText(student),
+        myScore: myScore,
+        totalPages: state.totalPages,
       );
     }
 
     // Finalizado → tela de fim
     if (state.isFinished) {
-      return _FinalView(scores: student.scores);
+      return _FinalView(myScore: myScore, totalPages: state.totalPages);
     }
 
     // Aguardando
@@ -112,6 +117,7 @@ class _StudentLobbyPageState extends State<StudentLobbyPage> {
       userName: auth.user!.fullname,
       currentPage: state.currentPage,
       totalPages: state.totalPages,
+      myScore: myScore,
     );
   }
 
@@ -189,12 +195,14 @@ class _WaitingView extends StatelessWidget {
   final String userName;
   final int currentPage;
   final int totalPages;
+  final ScoreEntity? myScore;
 
   const _WaitingView({
     required this.title,
     required this.userName,
     required this.currentPage,
     required this.totalPages,
+    required this.myScore,
   });
 
   @override
@@ -244,6 +252,10 @@ class _WaitingView extends StatelessWidget {
                 ),
               ),
             ],
+            if (myScore != null) ...[
+              const SizedBox(height: 16),
+              _ScoreSummaryCard(score: myScore!, totalPages: totalPages),
+            ],
             const SizedBox(height: 40),
             const _PulseDots(),
           ],
@@ -280,15 +292,68 @@ class _PulseDots extends StatelessWidget {
   }
 }
 
+class _ScoreSummaryCard extends StatelessWidget {
+  final ScoreEntity score;
+  final int totalPages;
+  const _ScoreSummaryCard({required this.score, required this.totalPages});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: AppTheme.cardDecoration(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, color: AppTheme.gold, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            '${score.score} pts',
+            style: const TextStyle(
+                color: AppTheme.gold,
+                fontWeight: FontWeight.w800,
+                fontSize: 16),
+          ),
+          const SizedBox(width: 16),
+          const Icon(Icons.check_circle_rounded,
+              color: AppTheme.success, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            '${score.correctCount}'
+            '${totalPages > 0 ? '/$totalPages' : ''} corretas',
+            style: const TextStyle(
+                color: AppTheme.textSecondary, fontSize: 14),
+          ),
+          const SizedBox(width: 16),
+          const Icon(Icons.leaderboard_rounded,
+              color: AppTheme.accent, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            '${score.rank}º',
+            style: const TextStyle(
+                color: AppTheme.accent,
+                fontWeight: FontWeight.w700,
+                fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ClosedQuestionView extends StatelessWidget {
   final bool wasCorrect;
   final bool answered;
   final String? selectedText;
+  final ScoreEntity? myScore;
+  final int totalPages;
 
   const _ClosedQuestionView({
     required this.wasCorrect,
     required this.answered,
     required this.selectedText,
+    required this.myScore,
+    required this.totalPages,
   });
 
   @override
@@ -351,7 +416,11 @@ class _ClosedQuestionView extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 32),
+              if (myScore != null) ...[
+                const SizedBox(height: 20),
+                _ScoreSummaryCard(score: myScore!, totalPages: totalPages),
+              ],
+              const SizedBox(height: 24),
               const Text(
                 'Aguardando próxima questão...',
                 style:
@@ -366,30 +435,104 @@ class _ClosedQuestionView extends StatelessWidget {
 }
 
 class _FinalView extends StatelessWidget {
-  final List<dynamic> scores;
-  const _FinalView({required this.scores});
+  final ScoreEntity? myScore;
+  final int totalPages;
+  const _FinalView({required this.myScore, required this.totalPages});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.emoji_events, color: AppTheme.gold, size: 80)
-              .animate()
-              .scale(duration: 600.ms, curve: Curves.elasticOut)
-              .then()
-              .shimmer(duration: 1500.ms, color: Colors.white),
-          const SizedBox(height: 20),
-          Text('Quiz Finalizado!', style: AppTheme.headlineLarge),
-          const SizedBox(height: 8),
-          const Text(
-            'Obrigado por participar!',
-            style:
-                TextStyle(color: AppTheme.textSecondary, fontSize: 16),
-          ),
-        ],
+      child: Padding(
+        padding: Responsive.horizontalPadding(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.emoji_events, color: AppTheme.gold, size: 80)
+                .animate()
+                .scale(duration: 600.ms, curve: Curves.elasticOut)
+                .then()
+                .shimmer(duration: 1500.ms, color: Colors.white),
+            const SizedBox(height: 20),
+            Text('Quiz Finalizado!', style: AppTheme.headlineLarge),
+            const SizedBox(height: 8),
+            const Text(
+              'Obrigado por participar!',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 16),
+            ),
+            if (myScore != null) ...[
+              const SizedBox(height: 32),
+              _ScoreSummaryCard(score: myScore!, totalPages: totalPages),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: AppTheme.cardDecoration(),
+                child: Column(
+                  children: [
+                    _StatRow(
+                      icon: Icons.format_list_numbered_rounded,
+                      label: 'Questões respondidas',
+                      value: '${myScore!.totalAnswered}'
+                          '${totalPages > 0 ? ' de $totalPages' : ''}',
+                      color: AppTheme.textPrimary,
+                    ),
+                    const SizedBox(height: 8),
+                    _StatRow(
+                      icon: Icons.check_circle_rounded,
+                      label: 'Respostas corretas',
+                      value: '${myScore!.correctCount}',
+                      color: AppTheme.success,
+                    ),
+                    const SizedBox(height: 8),
+                    _StatRow(
+                      icon: Icons.cancel_rounded,
+                      label: 'Respostas erradas',
+                      value:
+                          '${myScore!.totalAnswered - myScore!.correctCount}',
+                      color: AppTheme.danger,
+                    ),
+                    const SizedBox(height: 8),
+                    _StatRow(
+                      icon: Icons.star_rounded,
+                      label: 'Pontuação total',
+                      value: '${myScore!.score} pts',
+                      color: AppTheme.gold,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  const _StatRow(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(label,
+                style: const TextStyle(
+                    color: AppTheme.textSecondary, fontSize: 14))),
+        Text(value,
+            style: TextStyle(
+                color: color, fontWeight: FontWeight.w700, fontSize: 15)),
+      ],
     );
   }
 }

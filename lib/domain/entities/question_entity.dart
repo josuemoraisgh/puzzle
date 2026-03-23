@@ -6,7 +6,8 @@ import '../../core/utils/moodle_html_parser.dart';
 class QuestionEntity extends Equatable {
   final int slot;               // slot Moodle (1-indexed)
   final int page;               // página da questão (0-indexed)
-  final String text;            // enunciado sem tags HTML
+  final String text;            // enunciado sem tags HTML (fallback)
+  final String htmlText;        // enunciado como HTML com URLs corrigidas
   final List<ParsedChoice> choices;
   final List<String> imageUrls;
   final String inputBaseName;   // "q{attemptId}:{slot}_answer"
@@ -17,6 +18,7 @@ class QuestionEntity extends Equatable {
     required this.slot,
     required this.page,
     required this.text,
+    this.htmlText = '',
     required this.choices,
     this.imageUrls = const [],
     required this.inputBaseName,

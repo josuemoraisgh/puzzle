@@ -14,7 +14,8 @@ class ParsedChoice {
 
 class ParsedQuestion {
   final int slot;
-  final String text;           // texto da questão (HTML stripped)
+  final String text;           // texto da questão (HTML stripped — fallback)
+  final String htmlText;       // enunciado como HTML com URLs corrigidas (para renderização rica)
   final List<ParsedChoice> choices;
   final List<String> imageUrls;
   final String inputBaseName;  // "q{attemptId}:{slot}_answer"
@@ -24,6 +25,7 @@ class ParsedQuestion {
   const ParsedQuestion({
     required this.slot,
     required this.text,
+    required this.htmlText,
     required this.choices,
     required this.imageUrls,
     required this.inputBaseName,
@@ -46,6 +48,7 @@ class MoodleHtmlParser {
     required String baseUrl,
   }) {
     final text = _extractText(html);
+    final htmlText = _extractHtmlText(html, token, baseUrl);
     final choices = _extractChoices(html);
     final images = _extractImages(html, token, baseUrl);
     final seqCheck = _extractSeqCheck(html);
@@ -57,6 +60,7 @@ class MoodleHtmlParser {
     return ParsedQuestion(
       slot: slot,
       text: text,
+      htmlText: htmlText,
       choices: choices,
       imageUrls: images,
       inputBaseName: inputBase,
@@ -101,6 +105,37 @@ class MoodleHtmlParser {
     }
 
     return correctValues;
+  }
+
+  // ── Extração do HTML do enunciado (com URLs corrigidas, sem forms) ──────────
+
+  /// Retorna o HTML do enunciado com URLs de imagens corrigidas.
+  /// Remove blocos de resposta (inputs, botões) mas preserva formatação.
+  static String _extractHtmlText(String html, String token, String baseUrl) {
+    String content = _extractTag(html, 'qtext') ??
+        _extractTag(html, 'formulation') ??
+        '';
+    if (content.isEmpty) content = html;
+    content = _removeBlock(content, r'class="(?:ablock|answer)');
+    // Corrige URLs de imagens inline
+    content = content.replaceAllMapped(
+      RegExp(r'src="([^"]+)"', caseSensitive: false),
+      (m) {
+        var src = m.group(1) ?? '';
+        if (src.startsWith('@@PLUGINFILE@@')) {
+          src = src.replaceFirst(
+              '@@PLUGINFILE@@', '$baseUrl/webservice/pluginfile.php');
+        } else if (src.startsWith('/') && !src.startsWith('//')) {
+          src = '$baseUrl$src';
+        }
+        if (src.contains('pluginfile.php') && !src.contains('token=')) {
+          final sep = src.contains('?') ? '&' : '?';
+          src = '$src${sep}token=$token';
+        }
+        return 'src="$src"';
+      },
+    );
+    return content;
   }
 
   // ── Extração do texto da questão ──────────────────────────────────────────

@@ -445,6 +445,24 @@ class _ControlPanel extends StatelessWidget {
 
           const SizedBox(height: 12),
 
+          // ── Mostrar Gabarito (quando questão encerrada) ───────────────
+          if (state.isClosed || state.isFinished) ...[
+            const SizedBox(height: 4),
+            ElevatedButton.icon(
+              onPressed: () => context.push(AppRouter.professorReveal),
+              icon: const Icon(Icons.fact_check_rounded),
+              label: const Text('Mostrar Gabarito'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accent,
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 4),
+
           // ── Ver Ranking ──────────────────────────────────────────────
           OutlinedButton.icon(
             onPressed: () => context.push(AppRouter.professorRank),

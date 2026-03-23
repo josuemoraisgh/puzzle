@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -12,7 +13,7 @@ import '../../widgets/option_button.dart';
 class StudentQuestionPage extends StatelessWidget {
   final QuestionEntity question;
   final DateTime? endsAt;
-  final String? selectedChoice; // valor Moodle ("0", "1", "2"…)
+  final String? selectedChoice;
   final bool hasAnswered;
   final bool isSubmitting;
   final void Function(String choiceValue) onSelect;
@@ -50,34 +51,50 @@ class StudentQuestionPage extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // ── Imagens da questão ────────────────────────────────────
-              ...question.imageUrls.map((url) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        url,
-                        height: isMobile ? 160 : 220,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  )),
-
-              // ── Enunciado ─────────────────────────────────────────────
+              // ── Enunciado (HTML rico do Moodle) ───────────────────────
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: AppTheme.cardDecoration(glowing: true),
-                child: Text(
-                  question.text,
-                  style: GoogleFonts.nunito(
-                    fontSize: isMobile ? 17 : 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                child: question.htmlText.isNotEmpty
+                    ? HtmlWidget(
+                        question.htmlText,
+                        textStyle: GoogleFonts.nunito(
+                          fontSize: isMobile ? 16 : 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                          height: 1.5,
+                        ),
+                        customStylesBuilder: (element) {
+                          // Estiliza tabelas e elementos comuns do Moodle
+                          if (element.localName == 'table') {
+                            return {
+                              'border-collapse': 'collapse',
+                              'width': '100%',
+                            };
+                          }
+                          if (element.localName == 'td' ||
+                              element.localName == 'th') {
+                            return {
+                              'border': '1px solid #444',
+                              'padding': '6px 10px',
+                            };
+                          }
+                          if (element.localName == 'img') {
+                            return {'max-width': '100%', 'height': 'auto'};
+                          }
+                          return null;
+                        },
+                      )
+                    : Text(
+                        question.text,
+                        style: GoogleFonts.nunito(
+                          fontSize: isMobile ? 17 : 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                          height: 1.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
               )
                   .animate()
                   .slideY(begin: 0.3, duration: 400.ms, curve: Curves.easeOut)
@@ -103,8 +120,7 @@ class StudentQuestionPage extends StatelessWidget {
                     isDisabled: hasAnswered,
                     onTap: () => onSelect(choice.value),
                   )
-                      .animate(
-                          delay: Duration(milliseconds: index * 80))
+                      .animate(delay: Duration(milliseconds: index * 80))
                       .slideX(
                           begin: 0.3,
                           duration: 350.ms,
