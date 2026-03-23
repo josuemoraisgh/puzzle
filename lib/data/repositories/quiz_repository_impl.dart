@@ -38,18 +38,39 @@ class QuizRepositoryImpl implements IQuizRepository {
 
   @override
   Future<int> startAttempt(UserEntity user, int quizId) async {
-    // Verifica se já existe uma tentativa em progresso para reaproveitar
+    // 1. Verifica tentativa em progresso antes de criar
+    final existingId = await _getUnfinishedAttemptId(user, quizId);
+    if (existingId != null) return existingId;
+
+    // 2. Tenta criar nova tentativa
+    try {
+      return await _moodle.startAttempt(user.baseUrl, user.token, quizId);
+    } catch (_) {
+      // 3. Se falhar (já existe tentativa não listada), busca novamente
+      final retryId = await _getUnfinishedAttemptId(user, quizId);
+      if (retryId != null) return retryId;
+      // Tenta buscar qualquer tentativa (inclusive recém-finalizada)
+      final anyId = await _getUnfinishedAttemptId(user, quizId, status: 'all');
+      if (anyId != null) return anyId;
+      rethrow;
+    }
+  }
+
+  Future<int?> _getUnfinishedAttemptId(UserEntity user, int quizId,
+      {String status = 'unfinished'}) async {
     try {
       final attempts = await _moodle.getUserAttempts(
-          user.baseUrl, user.token, quizId, status: 'unfinished');
+          user.baseUrl, user.token, quizId, status: status);
       if (attempts.isNotEmpty) {
-        final existingId = (attempts.first['id'] as num?)?.toInt();
-        if (existingId != null) return existingId;
+        // Prefere tentativas não finalizadas
+        final unfinished = attempts.where((a) =>
+            a['state']?.toString() == 'inprogress' ||
+            a['state']?.toString() == 'overdue').toList();
+        final target = unfinished.isNotEmpty ? unfinished.first : attempts.first;
+        return (target['id'] as num?)?.toInt();
       }
-    } catch (_) {
-      // Se getUserAttempts falhar, tenta startAttempt normalmente
-    }
-    return _moodle.startAttempt(user.baseUrl, user.token, quizId);
+    } catch (_) {}
+    return null;
   }
 
   @override

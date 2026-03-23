@@ -506,8 +506,8 @@ class _ControlPanel extends StatelessWidget {
             ),
           ],
 
-          // ── Log (visível no mobile quando sem questões) ───────────────
-          if (!hasQuestions && prof.log.isNotEmpty) ...[
+          // ── Log (visível apenas no mobile — no desktop fica no painel lateral)
+          if (!hasQuestions && prof.log.isNotEmpty && !Responsive.isDesktop(context)) ...[
             const SizedBox(height: 12),
             SizedBox(height: 200, child: _LogPanel(log: prof.log)),
           ],
