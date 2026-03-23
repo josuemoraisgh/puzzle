@@ -30,6 +30,10 @@ abstract class IMoodleDatasource {
   /// Finaliza a tentativa.
   Future<void> finishAttempt(String baseUrl, String token, int attemptId);
 
+  /// Obtém a revisão de uma tentativa finalizada (inclui HTML com marcações correct/incorrect).
+  Future<Map<String, dynamic>> getAttemptReview(
+      String baseUrl, String token, int attemptId, int page);
+
   Future<void> saveGrade({
     required String baseUrl,
     required String token,
@@ -156,6 +160,20 @@ class MoodleDatasource implements IMoodleDatasource {
       i++;
     }
     return _callWs(baseUrl, token, 'mod_quiz_process_attempt', params);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getAttemptReview(
+      String baseUrl, String token, int attemptId, int page) async {
+    return _callWs(
+      baseUrl,
+      token,
+      'mod_quiz_get_attempt_review',
+      {
+        'attemptid': attemptId.toString(),
+        'page': page.toString(),
+      },
+    );
   }
 
   @override

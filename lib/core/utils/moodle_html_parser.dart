@@ -5,10 +5,11 @@ library;
 // ── Entidades de saída ────────────────────────────────────────────────────────
 
 class ParsedChoice {
-  final String value;  // "0", "1", "2"…
-  final String text;   // texto exibido para o aluno
+  final String value;     // "0", "1", "2"…
+  final String text;      // texto exibido para o aluno
+  final bool isCorrect;   // true se esta alternativa é a resposta correta
 
-  const ParsedChoice({required this.value, required this.text});
+  const ParsedChoice({required this.value, required this.text, this.isCorrect = false});
 }
 
 class ParsedQuestion {
@@ -62,6 +63,44 @@ class MoodleHtmlParser {
       seqCheck: seqCheck,
       type: type,
     );
+  }
+
+  /// Extrai os values dos inputs de rádio dentro de containers com classe
+  /// "correct" (mas não "incorrect") no HTML da revisão da tentativa.
+  /// Padrão Moodle: `<li class="r0 correct">` contém `<input type="radio" value="X">`.
+  static List<String> parseCorrectValues(String reviewHtml) {
+    final correctValues = <String>[];
+
+    // Regex para encontrar elementos li/div com classe contendo "correct"
+    // mas não "incorrect"
+    final containerRe = RegExp(
+      r'<(?:li|div)\b[^>]*class="([^"]*)"[^>]*>(.*?)</(?:li|div)>',
+      caseSensitive: false,
+      dotAll: true,
+    );
+
+    final radioValueRe = RegExp(
+      r'<input\b[^>]*type="radio"[^>]*value="([^"]*)"',
+      caseSensitive: false,
+    );
+
+    for (final m in containerRe.allMatches(reviewHtml)) {
+      final classAttr = m.group(1) ?? '';
+      final content = m.group(2) ?? '';
+
+      // Verifica se a classe contém "correct" mas não "incorrect"
+      if (classAttr.contains('correct') && !classAttr.contains('incorrect')) {
+        final radioMatch = radioValueRe.firstMatch(content);
+        if (radioMatch != null) {
+          final value = radioMatch.group(1) ?? '';
+          if (value.isNotEmpty && value != '-1') {
+            correctValues.add(value);
+          }
+        }
+      }
+    }
+
+    return correctValues;
   }
 
   // ── Extração do texto da questão ──────────────────────────────────────────

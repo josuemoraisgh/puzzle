@@ -133,6 +133,30 @@ class ProfessorController extends ChangeNotifier {
     }
   }
 
+  Future<void> extendQuestion(int extraSeconds) async {
+    final state = quizState;
+    if (!state.isActive || state.endsAt == null) return;
+    final remaining = state.endsAt!.difference(DateTime.now()).inSeconds;
+    final newDuration = (remaining < 0 ? 0 : remaining) + extraSeconds;
+    _setLoading(true);
+    _error = null;
+    try {
+      await _releaseQuestion(
+        teacherToken: AppConfig.teacherToken,
+        page: state.currentPage,
+        duration: newDuration,
+        totalPages: state.totalPages,
+        quizName: state.quizTitle,
+        quizId: _selectedQuiz?.id ?? 0,
+      );
+      await _refreshState();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> stopQuestion() async {
     _setLoading(true);
     _error = null;
@@ -189,6 +213,7 @@ class ProfessorController extends ChangeNotifier {
   // ── Privado ────────────────────────────────────────────────────────────────
 
   Future<void> _loadAllQuestions(UserEntity user, int attemptId) async {
+    // Primeiro, determina o total de páginas carregando uma a uma
     final allQuestions = <QuestionEntity>[];
     int page = 0;
     while (true) {
@@ -202,6 +227,22 @@ class ProfessorController extends ChangeNotifier {
     }
     _questions = allQuestions;
     notifyListeners();
+
+    // Depois, carrega novamente com respostas corretas via nova attempt
+    if (allQuestions.isNotEmpty) {
+      try {
+        final newAttemptId = await _quizRepo.startAttempt(user, _selectedQuiz!.id);
+        _attemptId = newAttemptId;
+        final withAnswers = await _quizRepo.loadQuestionsWithAnswers(
+            user, newAttemptId, allQuestions.length);
+        if (withAnswers.isNotEmpty) {
+          _questions = withAnswers;
+          notifyListeners();
+        }
+      } catch (_) {
+        // Se falhar, mantém as questões sem marcação de correto
+      }
+    }
   }
 
   Future<void> _refreshState() async {

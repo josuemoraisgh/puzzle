@@ -381,8 +381,24 @@ class _ControlPanel extends StatelessWidget {
 
           // ── Timer da questão ativa ───────────────────────────────────
           if (state.isActive && state.endsAt != null) ...[
-            TimerWidget(endsAt: state.endsAt!),
-            const SizedBox(height: 16),
+            TimerWidget(
+              endsAt: state.endsAt!,
+              onTimeUp: () => prof.stopQuestion(),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: prof.isLoading ? null : () => prof.extendQuestion(15),
+              icon: const Icon(Icons.add_alarm_rounded, color: AppTheme.accent),
+              label: const Text('+15s',
+                  style: TextStyle(color: AppTheme.accent)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppTheme.accent),
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
 
           // ── Seletor de tempo ─────────────────────────────────────────
@@ -664,19 +680,42 @@ class _SelectedQuestionCard extends StatelessWidget {
               final label =
                   String.fromCharCode(65 + e.key); // A, B, C…
               final choice = e.value;
+              final isCorrect = choice.isCorrect;
               return Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.bgCardAlt,
+                  color: isCorrect
+                      ? AppTheme.success.withValues(alpha: 0.18)
+                      : AppTheme.bgCardAlt,
                   borderRadius: BorderRadius.circular(6),
+                  border: isCorrect
+                      ? Border.all(
+                          color: AppTheme.success.withValues(alpha: 0.6),
+                          width: 1.5)
+                      : null,
                 ),
-                child: Text(
-                  '$label: ${choice.text}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isCorrect) ...[
+                      const Icon(Icons.check_circle_rounded,
+                          color: AppTheme.success, size: 14),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      '$label: ${choice.text}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isCorrect
+                            ? AppTheme.success
+                            : AppTheme.textSecondary,
+                        fontWeight: isCorrect
+                            ? FontWeight.w700
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               );
             }).toList(),

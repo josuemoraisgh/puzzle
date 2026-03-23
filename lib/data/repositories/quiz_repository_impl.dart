@@ -76,6 +76,72 @@ class QuizRepositoryImpl implements IQuizRepository {
   }
 
   @override
+  Future<List<QuestionEntity>> loadQuestionsWithAnswers(
+      UserEntity user, int attemptId, int totalPages) async {
+    // 1. Carrega todas as questões
+    final allQuestions = <QuestionEntity>[];
+    for (int page = 0; page < totalPages; page++) {
+      try {
+        final q = await getQuestion(user, attemptId, page);
+        allQuestions.add(q);
+      } catch (_) {
+        break;
+      }
+    }
+
+    // 2. Finaliza a tentativa para liberar o acesso à revisão
+    try {
+      await _moodle.finishAttempt(user.baseUrl, user.token, attemptId);
+    } catch (_) {
+      // Se não conseguir finalizar, retorna as questões sem marcação
+      return allQuestions;
+    }
+
+    // 3. Para cada página, busca a revisão e marca isCorrect nas choices
+    final enriched = <QuestionEntity>[];
+    for (final q in allQuestions) {
+      try {
+        final review = await _moodle.getAttemptReview(
+            user.baseUrl, user.token, attemptId, q.page);
+        final questions = review['questions'] as List? ?? [];
+        String reviewHtml = '';
+        for (final rq in questions) {
+          final rqMap = rq as Map;
+          if ((rqMap['slot'] as num?)?.toInt() == q.slot) {
+            reviewHtml = rqMap['html'] as String? ?? '';
+            break;
+          }
+        }
+
+        if (reviewHtml.isNotEmpty) {
+          final correctValues = MoodleHtmlParser.parseCorrectValues(reviewHtml);
+          final newChoices = q.choices.map((c) => ParsedChoice(
+            value: c.value,
+            text: c.text,
+            isCorrect: correctValues.contains(c.value),
+          )).toList();
+          enriched.add(QuestionEntity(
+            slot: q.slot,
+            page: q.page,
+            text: q.text,
+            choices: newChoices,
+            imageUrls: q.imageUrls,
+            inputBaseName: q.inputBaseName,
+            seqCheck: q.seqCheck,
+            type: q.type,
+          ));
+        } else {
+          enriched.add(q);
+        }
+      } catch (_) {
+        enriched.add(q);
+      }
+    }
+
+    return enriched;
+  }
+
+  @override
   Future<bool> submitPage(UserEntity user, int attemptId,
       QuestionEntity question, String choiceValue) async {
     final answerData = {

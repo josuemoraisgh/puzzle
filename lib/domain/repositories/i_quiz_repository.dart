@@ -27,6 +27,10 @@ abstract class IQuizRepository {
   /// Finaliza a tentativa do usuário no Moodle.
   Future<void> finishAttempt(UserEntity user, int attemptId);
 
+  /// Carrega todas as questões, finaliza a tentativa e marca as respostas corretas.
+  Future<List<QuestionEntity>> loadQuestionsWithAnswers(
+      UserEntity user, int attemptId, int totalPages);
+
   // ── GSheets: estado compartilhado ─────────────────────────────────────────
 
   Future<QuizStateEntity> getQuizState();

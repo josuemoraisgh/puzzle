@@ -6,7 +6,8 @@ import '../../core/theme/app_theme.dart';
 /// Exibe contagem regressiva baseada em [endsAt].
 class TimerWidget extends StatefulWidget {
   final DateTime endsAt;
-  const TimerWidget({super.key, required this.endsAt});
+  final VoidCallback? onTimeUp;
+  const TimerWidget({super.key, required this.endsAt, this.onTimeUp});
 
   @override
   State<TimerWidget> createState() => _TimerWidgetState();
@@ -16,6 +17,7 @@ class _TimerWidgetState extends State<TimerWidget> {
   late Timer _timer;
   int _seconds = 0;
   int _total = 0;
+  bool _timeUpCalled = false;
 
   @override
   void initState() {
@@ -30,6 +32,13 @@ class _TimerWidgetState extends State<TimerWidget> {
   void _update() {
     final diff = widget.endsAt.difference(DateTime.now()).inSeconds;
     _seconds = diff < 0 ? 0 : diff;
+    if (_seconds == 0 && !_timeUpCalled && widget.onTimeUp != null) {
+      _timeUpCalled = true;
+      // Chamar no próximo frame para evitar setState durante build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onTimeUp?.call();
+      });
+    }
   }
 
   @override
