@@ -114,25 +114,33 @@ class QuizRepositoryImpl implements IQuizRepository {
   /// navegar corretamente independente de quantas questões há por página.
   @override
   Future<List<QuestionEntity>> loadQuestionsWithAnswers(
-      UserEntity user, int attemptId, int totalPages) async {
+      UserEntity user, int attemptId, int totalPages,
+      {void Function(String)? onLog}) async {
+
+    void log(String msg) => onLog?.call(msg);
 
     // 1. Carrega todas as páginas usando nextpage do Moodle
     final allQuestions = <QuestionEntity>[];
-    // Map de slot → page para uso na revisão
     final slotToPage = <int, int>{};
     int page = 0;
+    int pageCount = 0;
 
+    log('Carregando páginas da tentativa $attemptId…');
     while (page >= 0) {
       try {
+        log('  → Buscando página $page…');
         final data = await _moodle.getAttemptData(
             user.baseUrl, user.token, attemptId, page);
 
         final questions = data['questions'] as List? ?? [];
+        log('  → Página $page: ${questions.length} questão(ões) retornada(s)');
+
         for (final q in questions) {
           final qMap = Map<String, dynamic>.from(q as Map);
           final html = qMap['html'] as String? ?? '';
           final slot = (qMap['slot'] as num? ?? 1).toInt();
           final qPage = (qMap['page'] as num? ?? page).toInt();
+          final type = qMap['type']?.toString() ?? '';
 
           final parsed = MoodleHtmlParser.parse(
             html: html,
@@ -141,6 +149,8 @@ class QuizRepositoryImpl implements IQuizRepository {
             token: user.token,
             baseUrl: user.baseUrl,
           );
+
+          log('     slot=$slot page=$qPage tipo=${type.isNotEmpty ? type : parsed.type} alternativas=${parsed.choices.length}');
 
           allQuestions.add(QuestionEntity(
             slot: parsed.slot,
@@ -157,18 +167,25 @@ class QuizRepositoryImpl implements IQuizRepository {
 
         // nextpage == -1 significa última página
         final nextPage = (data['nextpage'] as num? ?? -1).toInt();
+        log('  → nextpage=$nextPage');
         page = nextPage;
-      } catch (_) {
+        pageCount++;
+      } catch (e) {
+        log('  → ERRO ao buscar página $page: $e');
         break;
       }
     }
 
+    log('Total bruto: ${allQuestions.length} questões em $pageCount página(s)');
     if (allQuestions.isEmpty) return allQuestions;
 
     // 2. Finaliza a attempt para liberar revisão
+    log('Finalizando attempt para obter revisão…');
     try {
       await _moodle.finishAttempt(user.baseUrl, user.token, attemptId);
-    } catch (_) {
+      log('Attempt finalizado com sucesso');
+    } catch (e) {
+      log('AVISO: finishAttempt falhou ($e) — respostas corretas não disponíveis');
       return allQuestions;
     }
 
@@ -176,32 +193,46 @@ class QuizRepositoryImpl implements IQuizRepository {
     final reviewPages = slotToPage.values.toSet();
     final reviewHtmlBySlot = <int, String>{};
 
+    log('Buscando revisão em ${reviewPages.length} página(s)…');
     for (final reviewPage in reviewPages) {
       try {
+        log('  → Revisão página $reviewPage…');
         final review = await _moodle.getAttemptReview(
             user.baseUrl, user.token, attemptId, reviewPage);
+        int found = 0;
         for (final rq in (review['questions'] as List? ?? [])) {
           final rqMap = rq as Map;
           final slot = (rqMap['slot'] as num?)?.toInt();
           final html = rqMap['html'] as String? ?? '';
           if (slot != null && html.isNotEmpty) {
             reviewHtmlBySlot[slot] = html;
+            found++;
           }
         }
-      } catch (_) {}
+        log('  → $found slot(s) com HTML de revisão');
+      } catch (e) {
+        log('  → ERRO na revisão página $reviewPage: $e');
+      }
     }
 
     final result = <QuestionEntity>[];
+    int skipped = 0;
     for (final q in allQuestions) {
       // Filtra questões sem alternativas (dissertativas/abertas)
-      if (q.choices.isEmpty) continue;
+      if (q.choices.isEmpty) {
+        log('  ✗ slot=${q.slot} ignorada — sem alternativas (dissertativa/aberta)');
+        skipped++;
+        continue;
+      }
 
       final reviewHtml = reviewHtmlBySlot[q.slot] ?? '';
       if (reviewHtml.isEmpty) {
+        log('  ? slot=${q.slot} sem revisão — gabarito não disponível');
         result.add(q);
         continue;
       }
       final correctValues = MoodleHtmlParser.parseCorrectValues(reviewHtml);
+      log('  ✓ slot=${q.slot} gabarito: $correctValues');
       final newChoices = q.choices.map((c) => ParsedChoice(
         value: c.value,
         text: c.text,
@@ -218,6 +249,7 @@ class QuizRepositoryImpl implements IQuizRepository {
         type: q.type,
       ));
     }
+    if (skipped > 0) log('Questões abertas ignoradas: $skipped');
     return result;
   }
 

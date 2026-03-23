@@ -28,8 +28,10 @@ abstract class IQuizRepository {
   Future<void> finishAttempt(UserEntity user, int attemptId);
 
   /// Carrega todas as questões, finaliza a tentativa e marca as respostas corretas.
+  /// [onLog] callback opcional para acompanhar o progresso passo a passo.
   Future<List<QuestionEntity>> loadQuestionsWithAnswers(
-      UserEntity user, int attemptId, int totalPages);
+      UserEntity user, int attemptId, int totalPages,
+      {void Function(String)? onLog});
 
   // ── GSheets: estado compartilhado ─────────────────────────────────────────
 

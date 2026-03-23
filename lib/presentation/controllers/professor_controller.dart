@@ -99,11 +99,12 @@ class ProfessorController extends ChangeNotifier {
     _error = null;
     _log = [];
     try {
-      _addLog('Iniciando attempt para quiz ${quiz.id}…');
+      _addLog('━━ Iniciando quiz ${quiz.name} (id=${quiz.id}) ━━');
+      _addLog('Buscando/criando attempt…');
       _attemptId = await _quizRepo.startAttempt(user, quiz.id);
-      _addLog('Attempt ID: $_attemptId — carregando questões…');
+      _addLog('Attempt ID: $_attemptId');
       await _loadAllQuestions(user, _attemptId!);
-      _addLog('Questões carregadas: ${_questions.length}');
+      _addLog('━━ Concluído: ${_questions.length} questão(ões) prontas ━━');
     } catch (e) {
       _error = e.toString();
       _addLog('ERRO: $_error');
@@ -225,11 +226,13 @@ class ProfessorController extends ChangeNotifier {
   }
 
   Future<void> _loadAllQuestions(UserEntity user, int attemptId) async {
-    _addLog('loadQuestionsWithAnswers — attempt $attemptId');
     try {
-      final questions = await _quizRepo.loadQuestionsWithAnswers(user, attemptId, 0);
+      final questions = await _quizRepo.loadQuestionsWithAnswers(
+        user, attemptId, 0,
+        onLog: _addLog,
+      );
       _questions = questions;
-      _addLog('Questões de múltipla escolha carregadas: ${questions.length}');
+      _addLog('Múltipla escolha prontas: ${questions.length}');
     } catch (e) {
       _addLog('ERRO em loadQuestionsWithAnswers: $e');
       rethrow;
