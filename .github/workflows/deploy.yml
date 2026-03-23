@@ -26,7 +26,7 @@ jobs:
 
       - name: Build Web
         run: |
-          flutter build web --wasm --release --base-href=/qip/
+          flutter build web --wasm --release --base-href=/MoodleQuiz/
           cp build/web/index.html build/web/404.html
 
       - name: Deploy
