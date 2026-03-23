@@ -181,6 +181,15 @@ class _ProfessorAppBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: AppTheme.textSecondary, size: 20),
+            tooltip: 'Voltar para seleção de questionário',
+            onPressed: () {
+              prof.stopPolling();
+              context.go(AppRouter.professorQuiz);
+            },
+          ),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
