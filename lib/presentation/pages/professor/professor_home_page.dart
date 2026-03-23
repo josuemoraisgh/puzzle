@@ -568,10 +568,9 @@ class _DurationSelector extends StatelessWidget {
     required this.enabled,
   });
 
-  static const _options = [15, 20, 30, 45, 60, 90];
-
   @override
   Widget build(BuildContext context) {
+    final options = AppConfig.questionTimeOptions;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -584,7 +583,7 @@ class _DurationSelector extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _options.map((sec) {
+          children: options.map((sec) {
             final selected = sec == value;
             return GestureDetector(
               onTap: enabled ? () => onChange(sec) : null,

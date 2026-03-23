@@ -8,6 +8,7 @@ class AppConfig {
   static String moodleBaseUrl = '';
   static String quizTitle = 'Quiz Interativo';
   static int defaultQuestionTime = 30;
+  static List<int> questionTimeOptions = [15, 20, 30, 45, 60, 90];
   static String teacherToken = '';
 
   static void loadFromMap(Map<String, dynamic> config) {
@@ -18,6 +19,16 @@ class AppConfig {
         int.tryParse(config['default_question_time']?.toString() ?? '') ??
             defaultQuestionTime;
     teacherToken = (config['teacher_token'] as String?) ?? teacherToken;
+
+    final raw = config['question_time_options']?.toString() ?? '';
+    if (raw.isNotEmpty) {
+      final parsed = raw
+          .split(',')
+          .map((s) => int.tryParse(s.trim()))
+          .whereType<int>()
+          .toList();
+      if (parsed.isNotEmpty) questionTimeOptions = parsed;
+    }
   }
 
   static bool get isConfigured => gsheetScriptUrl.isNotEmpty;

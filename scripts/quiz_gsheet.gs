@@ -11,7 +11,7 @@
  *   - Pontuações dos estudantes (reportadas pelo cliente após feedback do Moodle)
  *
  * Estrutura de Planilhas criada por setupSheets():
- *   config       – Configurações (moodle_url, quiz_title, default_question_time, teacher_token)
+ *   config       – Configurações (moodle_url, quiz_title, default_question_time, question_time_options, teacher_token)
  *   quiz_state   – Estado atual (state, current_page, total_pages, quiz_id, …)
  *   scores       – Pontuações por estudante
  */
@@ -344,11 +344,12 @@ function setupSheets() {
   if (cfg) spreadsheet.deleteSheet(cfg);
   cfg = spreadsheet.insertSheet(SHEETS.CONFIG);
   cfg.getRange('A1:B1').setValues([['key', 'value']]);
-  cfg.getRange('A2:B5').setValues([
-    ['moodle_url',            'https://moodle.suainstituicao.edu.br'],
-    ['quiz_title',            'Quiz Interativo'],
-    ['default_question_time', 30],
-    ['teacher_token',         'TROQUE_ESTE_TOKEN_AGORA'],  // ← ALTERE!
+  cfg.getRange('A2:B6').setValues([
+    ['moodle_url',             'https://moodle.suainstituicao.edu.br'],
+    ['quiz_title',             'Quiz Interativo'],
+    ['default_question_time',  30],
+    ['question_time_options',  '15,20,30,45,60,90'],  // ← lista separada por vírgula
+    ['teacher_token',          'TROQUE_ESTE_TOKEN_AGORA'],  // ← ALTERE!
   ]);
   cfg.setFrozenRows(1);
 
