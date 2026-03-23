@@ -12,6 +12,7 @@ import '../../../domain/entities/question_entity.dart';
 import '../../../domain/entities/quiz_state_entity.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/professor_controller.dart';
+import '../../../core/utils/fullscreen_button.dart';
 import '../../widgets/timer_widget.dart';
 
 /// Painel do professor – controle de questões + status do quiz.
@@ -212,6 +213,7 @@ class _ProfessorAppBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          const FullscreenButton(),
           IconButton(
             icon: const Icon(Icons.bar_chart_rounded,
                 color: AppTheme.accent),
