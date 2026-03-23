@@ -433,8 +433,24 @@ class MoodleStateDatasource implements IStateDatasource {
       );
 
       if (stateEntry.isEmpty) {
-        _log(
-            '⚠️  Nenhuma entry tipo "state" encontrada. Retornando estado vazio.');
+        // Verifica se existe entry órfã (type vazio, sem student_id) — pode ser
+        // uma entry de estado criada anteriormente sem o campo type preenchido.
+        final orphan = entries.firstWhere(
+          (e) =>
+              (e['type'] == '' || e['type'] == null) &&
+              (e['student_id'] == '' || e['student_id'] == null),
+          orElse: () => {},
+        );
+
+        if (orphan.isNotEmpty) {
+          _stateEntryId = orphan['_entry_id'] as int?;
+          _log(
+              '⚠️  Nenhuma entry tipo "state", mas encontrada entry órfã ID $_stateEntryId. Será atualizada no próximo save.');
+        } else {
+          _log(
+              '⚠️  Nenhuma entry tipo "state" encontrada. Retornando estado vazio.');
+        }
+
         _logSeparator();
         _printFullLog();
         return Map.from(_emptyState);
