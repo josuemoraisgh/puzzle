@@ -247,9 +247,10 @@ class MoodleDatasource implements IMoodleDatasource {
     _assertOk(resp);
     final data = jsonDecode(resp.body);
     if (data is Map && data['exception'] != null) {
+      final code = data['errorcode']?.toString() ?? '';
       throw MoodleException(
-          _friendlyError(data['errorcode']?.toString() ?? '',
-              data['message']?.toString() ?? ''));
+          _friendlyError(code, data['message']?.toString() ?? ''),
+          errorCode: code);
     }
     if (data is Map<String, dynamic>) return data;
     return {'result': data};
@@ -275,7 +276,8 @@ class MoodleDatasource implements IMoodleDatasource {
 
 class MoodleException implements Exception {
   final String message;
-  MoodleException(this.message);
+  final String? errorCode;
+  MoodleException(this.message, {this.errorCode});
   @override
   String toString() => message;
 }

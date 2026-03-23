@@ -101,7 +101,7 @@ class ProfessorController extends ChangeNotifier {
     try {
       _addLog('━━ Iniciando quiz ${quiz.name} (id=${quiz.id}) ━━');
       _addLog('Buscando/criando attempt…');
-      _attemptId = await _quizRepo.startAttempt(user, quiz.id);
+      _attemptId = await _quizRepo.startAttempt(user, quiz.id, onLog: _addLog);
       _addLog('Attempt ID: $_attemptId');
       await _loadAllQuestions(user, _attemptId!);
       _addLog('━━ Concluído: ${_questions.length} questão(ões) prontas ━━');

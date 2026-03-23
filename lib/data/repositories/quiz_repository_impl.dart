@@ -37,39 +37,63 @@ class QuizRepositoryImpl implements IQuizRepository {
   }
 
   @override
-  Future<int> startAttempt(UserEntity user, int quizId) async {
-    // 1. Verifica tentativa em progresso antes de criar
-    final existingId = await _getUnfinishedAttemptId(user, quizId);
-    if (existingId != null) return existingId;
+  Future<int> startAttempt(UserEntity user, int quizId,
+      {void Function(String)? onLog}) async {
+    void log(String m) => onLog?.call(m);
+
+    // 1. Busca tentativa em andamento antes de criar
+    log('Verificando tentativas existentes (status=unfinished)…');
+    final existingId = await _getUnfinishedAttemptId(user, quizId, onLog: onLog);
+    if (existingId != null) {
+      log('Tentativa existente reutilizada: ID $existingId');
+      return existingId;
+    }
 
     // 2. Tenta criar nova tentativa
+    log('Nenhuma encontrada — criando nova tentativa…');
     try {
-      return await _moodle.startAttempt(user.baseUrl, user.token, quizId);
-    } catch (_) {
-      // 3. Se falhar (já existe tentativa não listada), busca novamente
-      final retryId = await _getUnfinishedAttemptId(user, quizId);
-      if (retryId != null) return retryId;
-      // Tenta buscar qualquer tentativa (inclusive recém-finalizada)
-      final anyId = await _getUnfinishedAttemptId(user, quizId, status: 'all');
-      if (anyId != null) return anyId;
+      final id = await _moodle.startAttempt(user.baseUrl, user.token, quizId);
+      log('Nova tentativa criada: ID $id');
+      return id;
+    } on MoodleException catch (e) {
+      log('Moodle recusou (${e.errorCode ?? e.message}) — buscando novamente…');
+      // "quizalreadystarted": já existe tentativa aberta não listada antes
+      final retryId = await _getUnfinishedAttemptId(user, quizId, onLog: onLog);
+      if (retryId != null) {
+        log('Tentativa encontrada na segunda busca: ID $retryId');
+        return retryId;
+      }
+      log('Tentando status=all como último recurso…');
+      final anyId = await _getUnfinishedAttemptId(user, quizId,
+          status: 'all', onLog: onLog);
+      if (anyId != null) {
+        log('Tentativa encontrada (all): ID $anyId');
+        return anyId;
+      }
       rethrow;
     }
   }
 
   Future<int?> _getUnfinishedAttemptId(UserEntity user, int quizId,
-      {String status = 'unfinished'}) async {
+      {String status = 'unfinished', void Function(String)? onLog}) async {
+    void log(String m) => onLog?.call(m);
     try {
       final attempts = await _moodle.getUserAttempts(
           user.baseUrl, user.token, quizId, status: status);
+      log('  getUserAttempts($status): ${attempts.length} resultado(s)');
+      for (final a in attempts) {
+        log('    id=${a['id']} state=${a['state']}');
+      }
       if (attempts.isNotEmpty) {
-        // Prefere tentativas não finalizadas
-        final unfinished = attempts.where((a) =>
+        final inprogress = attempts.where((a) =>
             a['state']?.toString() == 'inprogress' ||
             a['state']?.toString() == 'overdue').toList();
-        final target = unfinished.isNotEmpty ? unfinished.first : attempts.first;
+        final target = inprogress.isNotEmpty ? inprogress.first : attempts.first;
         return (target['id'] as num?)?.toInt();
       }
-    } catch (_) {}
+    } catch (e) {
+      log('  getUserAttempts($status) ERRO: $e');
+    }
     return null;
   }
 
@@ -258,7 +282,7 @@ class QuizRepositoryImpl implements IQuizRepository {
       QuestionEntity question, String choiceValue) async {
     final answerData = {
       question.inputBaseName: choiceValue,
-      '${question.inputBaseName.replaceFirst('_answer', ':sequencecheck')}':
+      question.inputBaseName.replaceFirst('_answer', ':sequencecheck'):
           question.seqCheck,
     };
 

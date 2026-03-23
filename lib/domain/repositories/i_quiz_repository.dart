@@ -14,7 +14,8 @@ abstract class IQuizRepository {
   Future<List<MoodleQuiz>> getQuizzesByCourse(UserEntity user, int courseId);
 
   /// Inicia (ou retoma) tentativa. Retorna attemptId.
-  Future<int> startAttempt(UserEntity user, int quizId);
+  Future<int> startAttempt(UserEntity user, int quizId,
+      {void Function(String)? onLog});
 
   /// Obtém e parseia a questão de uma página da tentativa.
   Future<QuestionEntity> getQuestion(
