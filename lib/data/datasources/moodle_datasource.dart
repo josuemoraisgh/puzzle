@@ -287,7 +287,7 @@ class MoodleDatasource implements IMoodleDatasource {
   // ── Privado ────────────────────────────────────────────────────────────────
 
   /// Chama um web service Moodle diretamente via GET.
-  /// Se a resposta for uma lista JSON, retorna {'result': <lista>}.
+  /// Se a resposta for uma lista JSON, retorna {'result': [lista]}.
   Future<Map<String, dynamic>> _callWs(
     String baseUrl,
     String token,

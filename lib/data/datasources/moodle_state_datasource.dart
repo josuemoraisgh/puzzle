@@ -90,6 +90,20 @@ class MoodleStateDatasource implements IStateDatasource {
   MoodleStateDatasource(this._moodle, [http.Client? client])
       : _client = client ?? http.Client();
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /// Extrai string de forma segura de valores do Moodle que podem ser Map, String, etc.
+  String _safeString(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is num) return value.toString();
+    if (value is Map) {
+      // Alguns campos do Moodle retornam {value: "texto"}
+      return _safeString(value['value'] ?? value['text'] ?? '');
+    }
+    return '';
+  }
+
   // ── Discovery ──────────────────────────────────────────────────────────────
 
   /// Busca o dataid da Database "mq_state" no curso. Cacheia o resultado.
@@ -107,7 +121,7 @@ class MoodleStateDatasource implements IStateDatasource {
 
     // Procura pela atividade chamada "mq_state"
     for (final db in databases) {
-      final name = db['name']?.toString() ?? '';
+      final name = _safeString(db['name']);
       if (name.toLowerCase() == 'mq_state') {
         final id = (db['id'] as num?)?.toInt();
         if (id != null && id > 0) {
@@ -150,7 +164,7 @@ class MoodleStateDatasource implements IStateDatasource {
     );
 
     for (final f in (result['fields'] as List? ?? [])) {
-      final name = f['name']?.toString() ?? '';
+      final name = _safeString(f['name']);
       final id = (f['id'] as num).toInt();
       switch (name) {
         case 'type':
@@ -214,7 +228,7 @@ class MoodleStateDatasource implements IStateDatasource {
       };
       for (final c in contents) {
         final fid = (c['fieldid'] as num?)?.toInt();
-        final val = c['content']?.toString() ?? '';
+        final val = _safeString(c['content']);
         if (fid == _typeFieldId) {
           map['type'] = val;
         }

@@ -155,7 +155,9 @@ class ProfessorController extends ChangeNotifier {
     if (!state.isActive ||
         state.endsAt == null ||
         user == null ||
-        courseId == null) return;
+        courseId == null) {
+      return;
+    }
     final remaining = state.endsAt!.difference(DateTime.now()).inSeconds;
     final newDuration = (remaining < 0 ? 0 : remaining) + extraSeconds;
     _setLoading(true);

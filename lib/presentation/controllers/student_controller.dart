@@ -102,7 +102,9 @@ class StudentController extends ChangeNotifier {
         q == null ||
         id == null ||
         _hasAnswered ||
-        courseId <= 0) return;
+        courseId <= 0) {
+      return;
+    }
 
     _isSubmitting = true;
     notifyListeners();
