@@ -19,7 +19,8 @@ abstract class IMoodleDatasource {
 
   /// Lista tentativas do usuário para um quiz. status: 'all'|'finished'|'unfinished'.
   Future<List<Map<String, dynamic>>> getUserAttempts(
-      String baseUrl, String token, int quizId, {String status = 'all'});
+      String baseUrl, String token, int quizId,
+      {String status = 'all'});
 
   /// Retorna dados de uma página da tentativa (inclui HTML das questões).
   Future<Map<String, dynamic>> getAttemptData(
@@ -43,6 +44,11 @@ abstract class IMoodleDatasource {
     required int assignId,
     required double grade,
   });
+
+  /// Retorna os shortnames dos papéis do usuário em um curso específico.
+  /// Usa core_enrol_get_enrolled_users filtrado pelo userId.
+  Future<List<String>> getUserRolesInCourse(
+      String baseUrl, String token, int courseId, int userId);
 }
 
 /// Implementação concreta – D: depende apenas de http.
@@ -65,7 +71,8 @@ class MoodleDatasource implements IMoodleDatasource {
     if (data['error'] != null) throw MoodleException(data['error'].toString());
 
     final token = data['token'] as String?;
-    if (token == null) throw MoodleException('Token não retornado pelo Moodle.');
+    if (token == null)
+      throw MoodleException('Token não retornado pelo Moodle.');
 
     final siteInfo = await _callWs(
       baseUrl,
@@ -122,8 +129,7 @@ class MoodleDatasource implements IMoodleDatasource {
   }
 
   @override
-  Future<int> startAttempt(
-      String baseUrl, String token, int quizId) async {
+  Future<int> startAttempt(String baseUrl, String token, int quizId) async {
     final result = await _callWs(
       baseUrl,
       token,
@@ -223,6 +229,38 @@ class MoodleDatasource implements IMoodleDatasource {
       'workflowstate': 'released',
       'applytoall': '0',
     });
+  }
+
+  @override
+  Future<List<String>> getUserRolesInCourse(
+      String baseUrl, String token, int courseId, int userId) async {
+    try {
+      final result = await _callWs(
+        baseUrl,
+        token,
+        'core_enrol_get_enrolled_users',
+        {
+          'courseid': courseId.toString(),
+          'options[0][name]': 'userids',
+          'options[0][value]': userId.toString(),
+        },
+      );
+      final users = result['result'];
+      if (users is List) {
+        for (final user in users) {
+          if (user is Map && (user['id'] as num?)?.toInt() == userId) {
+            final roles = user['roles'] as List? ?? [];
+            return roles
+                .map((r) => (r as Map)['shortname']?.toString() ?? '')
+                .where((s) => s.isNotEmpty)
+                .toList();
+          }
+        }
+      }
+    } on MoodleException {
+      // Pode falhar se o usuário não tem permissão para ver participantes
+    }
+    return [];
   }
 
   // ── Privado ────────────────────────────────────────────────────────────────

@@ -33,10 +33,28 @@ class AppRouter {
         final isLogged = auth.user != null;
         final loc = state.matchedLocation;
 
+        // Não autenticado → login (exceto setup)
         if (!isLogged && loc != login && loc != setup) return login;
-        if (isLogged && loc == login) {
-          return auth.user!.isTeacher ? professorCourses : student;
+
+        if (isLogged) {
+          final user = auth.user!;
+
+          // Redireciona para home correta se estiver no login
+          if (loc == login) {
+            return user.isTeacher ? professorCourses : student;
+          }
+
+          // Estudante tentando acessar rota de professor → redireciona
+          if (!user.isTeacher && loc.startsWith('/professor')) {
+            return student;
+          }
+
+          // Professor tentando acessar rota de estudante → redireciona
+          if (user.isTeacher && loc == student) {
+            return professorCourses;
+          }
         }
+
         return null;
       },
       routes: [
@@ -61,7 +79,9 @@ class AppRouter {
           ],
         ),
         GoRoute(path: professorQrCode, builder: (_, __) => const QrCodePage()),
-        GoRoute(path: professorReveal, builder: (_, __) => const ProfessorRevealPage()),
+        GoRoute(
+            path: professorReveal,
+            builder: (_, __) => const ProfessorRevealPage()),
         GoRoute(path: student, builder: (_, __) => const StudentLobbyPage()),
       ],
     );
