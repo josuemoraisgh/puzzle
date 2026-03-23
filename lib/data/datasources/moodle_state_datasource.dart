@@ -494,7 +494,11 @@ class MoodleStateDatasource implements IStateDatasource {
 
   Future<void> _writeState(
       String baseUrl, String token, Map<String, dynamic> state) async {
+    _log('_writeState: preparando dados...');
+
     final jsonStr = jsonEncode(state);
+    _log('  state_json (${jsonStr.length} chars)');
+
     final data = {
       'data[0][fieldid]': _typeFieldId!.toString(),
       'data[0][value]': 'state',
@@ -514,16 +518,36 @@ class MoodleStateDatasource implements IStateDatasource {
     };
 
     if (_stateEntryId == null) {
+      _log('  stateEntryId é null → chamando mod_data_add_entry');
+      _log('  databaseid: $_dataid');
+
       final res = await _callWs(baseUrl, token, 'mod_data_add_entry', {
         'databaseid': _dataid!.toString(),
         ...data,
       });
+
+      _log('  Resposta de mod_data_add_entry:');
+      _log('    Tipo: ${res.runtimeType}');
+      _log('    Keys: ${res.keys.join(", ")}');
+      _log('    CONTEÚDO COMPLETO: $res');
+
+      if (res.containsKey('newentryid')) {
+        _log(
+            '    Campo "newentryid": tipo=${res["newentryid"].runtimeType}, valor=${res["newentryid"]}');
+      }
+
       _stateEntryId = (res['newentryid'] as num?)?.toInt();
+      _log('  stateEntryId extraído: $_stateEntryId');
     } else {
+      _log(
+          '  stateEntryId existe: $_stateEntryId → chamando mod_data_update_entry');
+
       await _callWs(baseUrl, token, 'mod_data_update_entry', {
         'entryid': _stateEntryId!.toString(),
         ...data,
       });
+
+      _log('  mod_data_update_entry concluído');
     }
   }
 
@@ -722,6 +746,8 @@ class MoodleStateDatasource implements IStateDatasource {
     String function,
     Map<String, String> params,
   ) async {
+    _log('_callWs: $function');
+
     final uri = Uri.parse('$baseUrl/webservice/rest/server.php').replace(
       queryParameters: {
         'wstoken': token,
@@ -730,18 +756,36 @@ class MoodleStateDatasource implements IStateDatasource {
         ...params,
       },
     );
+
+    _log('  Fazendo requisição HTTP...');
     final resp = await _client.get(uri);
+
     if (resp.statusCode != 200) {
+      _log('  ❌ HTTP ${resp.statusCode}');
       throw StateException('Erro HTTP ${resp.statusCode}');
     }
+
+    _log('  ✅ HTTP 200 OK');
+    _log('  Body length: ${resp.body.length} bytes');
+    _log('  Body: ${resp.body}');
+
     final data = jsonDecode(resp.body);
+    _log('  Após jsonDecode: tipo=${data.runtimeType}');
+
     if (data is Map && data['exception'] != null) {
+      _log('  ❌ Moodle Exception: ${data["message"]}');
       throw StateException(
         data['message']?.toString() ?? 'Erro desconhecido no Moodle',
         code: data['errorcode']?.toString(),
       );
     }
-    if (data is Map<String, dynamic>) return data;
+
+    if (data is Map<String, dynamic>) {
+      _log('  Retornando Map com ${data.length} keys');
+      return data;
+    }
+
+    _log('  Retornando Map wrapper');
     return {'result': data};
   }
 }
