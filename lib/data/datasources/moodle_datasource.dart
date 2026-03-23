@@ -271,11 +271,18 @@ class MoodleDatasource implements IMoodleDatasource {
   @override
   Future<List<Map<String, dynamic>>> getDataActivitiesByCourse(
       String baseUrl, String token, int courseId) async {
+    // courseId=0 significa "descoberta automática": busca em todos os cursos
+    // do usuário omitindo o filtro, o que faz o Moodle retornar todos os
+    // databases acessíveis. Isso é necessário para o estudante, que não sabe
+    // de antemão em qual curso está o mq_state.
+    final params = courseId > 0
+        ? {'courseids[0]': courseId.toString()}
+        : <String, String>{};
     final result = await _callWs(
       baseUrl,
       token,
       'mod_data_get_databases_by_courses',
-      {'courseids[0]': courseId.toString()},
+      params,
     );
     final databases = result['databases'];
     if (databases is List) {
