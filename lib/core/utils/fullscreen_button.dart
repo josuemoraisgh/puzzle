@@ -18,20 +18,28 @@ class FullscreenButton extends StatefulWidget {
 
 class _FullscreenButtonState extends State<FullscreenButton> {
   bool _isFullscreen = false;
+  JSFunction? _listener;
 
   @override
   void initState() {
     super.initState();
-    web.document.addEventListener(
-      'fullscreenchange',
-      (web.Event _) {
-        if (mounted) {
-          setState(() {
-            _isFullscreen = web.document.fullscreenElement != null;
-          });
-        }
-      }.toJS,
-    );
+    // Lê o estado real do browser ao montar (pode estar fullscreen ao voltar para a página)
+    _isFullscreen = web.document.fullscreenElement != null;
+
+    _listener = (web.Event _) {
+      if (mounted) {
+        setState(() => _isFullscreen = web.document.fullscreenElement != null);
+      }
+    }.toJS;
+    web.document.addEventListener('fullscreenchange', _listener!);
+  }
+
+  @override
+  void dispose() {
+    if (_listener != null) {
+      web.document.removeEventListener('fullscreenchange', _listener!);
+    }
+    super.dispose();
   }
 
   void _toggle() {
