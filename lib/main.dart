@@ -28,6 +28,7 @@ Future<void> main() async {
     final raw = await rootBundle.loadString('assets/config.json');
     final map = jsonDecode(raw) as Map<String, dynamic>;
     AppConfig.gsheetScriptUrl = (map['gsheet_script_url'] as String?)?.trim() ?? '';
+    AppConfig.studentUrl = (map['student_url'] as String?)?.trim() ?? AppConfig.studentUrl;
   } catch (_) {
     // Arquivo ausente em dev local – segue com valor vazio
   }

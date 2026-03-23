@@ -5,6 +5,7 @@ class AppConfig {
   static const String version = '1.0.0';
 
   static String gsheetScriptUrl = '';
+  static String studentUrl = 'https://lasec-ufu.github.io/MoodleQuiz/';
   static String moodleBaseUrl = '';
   static String quizTitle = 'Quiz Interativo';
   static int defaultQuestionTime = 30;

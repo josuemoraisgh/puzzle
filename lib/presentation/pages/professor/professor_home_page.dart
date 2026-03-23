@@ -215,6 +215,12 @@ class _ProfessorAppBar extends StatelessWidget {
           ),
           const FullscreenButton(),
           IconButton(
+            icon: const Icon(Icons.qr_code_2_rounded,
+                color: AppTheme.textSecondary),
+            tooltip: 'QR Code do Aluno',
+            onPressed: () => context.go(AppRouter.professorQrCode),
+          ),
+          IconButton(
             icon: const Icon(Icons.bar_chart_rounded,
                 color: AppTheme.accent),
             tooltip: 'Ver Ranking',
