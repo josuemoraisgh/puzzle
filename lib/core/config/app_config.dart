@@ -12,6 +12,8 @@ class AppConfig {
   static String quizTitle = 'Quiz Interativo';
   static int defaultQuestionTime = 30;
   static List<int> questionTimeOptions = [15, 20, 30, 45, 60, 90, 120];
+  /// ID do curso Moodle onde está o mq_state. Opcional — 0 força auto-discovery.
+  static int courseId = 0;
 
   /// Carrega todos os campos do mapa (config.json).
   static void loadFromMap(Map<String, dynamic> config) {
@@ -31,6 +33,7 @@ class AppConfig {
           .toList();
       if (parsed.isNotEmpty) questionTimeOptions = parsed;
     }
+    courseId = int.tryParse(config['course_id']?.toString() ?? '') ?? 0;
   }
 
   static bool get isConfigured => true;

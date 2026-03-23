@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/config/app_config.dart';
 import '../../domain/entities/question_entity.dart';
 import '../../domain/entities/quiz_state_entity.dart';
 import '../../domain/entities/score_entity.dart';
@@ -148,12 +149,15 @@ class StudentController extends ChangeNotifier {
 
   Future<void> _refreshState(UserEntity user) async {
     try {
-      final newState = await _quizRepo.getQuizState(
-          user, _quizState.courseId > 0 ? _quizState.courseId : 0);
+      // Prioridade: courseId vindo do config.json > courseId do estado já lido > 0
+      final courseId = AppConfig.courseId > 0
+          ? AppConfig.courseId
+          : (_quizState.courseId > 0 ? _quizState.courseId : 0);
+
+      final newState = await _quizRepo.getQuizState(user, courseId);
 
       // Nova questão liberada
       if (newState.isActive && newState.currentPage != _lastSeenPage) {
-        _lastSeenPage = newState.currentPage;
         _selectedChoice = null;
         _hasAnswered = false;
         _lastAnswerCorrect = false;
@@ -173,11 +177,17 @@ class StudentController extends ChangeNotifier {
           try {
             _currentQuestion =
                 await _quizRepo.getQuestion(user, id, newState.currentPage);
+            // Só avança _lastSeenPage após carregar com sucesso
+            _lastSeenPage = newState.currentPage;
+            _error = null;
           } catch (e) {
             _error = e.toString();
           } finally {
             _isLoadingQuestion = false;
           }
+        } else {
+          // Nenhuma tentativa disponível, aguarda próximo ciclo
+          _lastSeenPage = newState.currentPage;
         }
       }
 
@@ -196,9 +206,9 @@ class StudentController extends ChangeNotifier {
       }
 
       _quizState = newState;
-      final courseId = newState.courseId > 0 ? newState.courseId : 0;
-      _scores = await _quizRepo.getScores(user, courseId);
-      _error = null;
+      final scoreCourseId = newState.courseId > 0 ? newState.courseId : courseId;
+      _scores = await _quizRepo.getScores(user, scoreCourseId);
+      // Não limpa _error aqui — pode ter sido setado pelo bloco de questão acima
       notifyListeners();
     } catch (e) {
       _error = e.toString();

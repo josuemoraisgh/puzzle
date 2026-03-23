@@ -111,6 +111,27 @@ class _StudentLobbyPageState extends State<StudentLobbyPage> {
       return _FinalView(myScore: myScore, totalPages: state.totalPages);
     }
 
+    // Erro ao carregar questão
+    if (student.error != null) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 48),
+          const SizedBox(height: 16),
+          Text(
+            'Erro: ${student.error}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: student.clearError,
+            child: const Text('Tentar novamente'),
+          ),
+        ],
+      );
+    }
+
     // Aguardando
     return _WaitingView(
       title: state.quizTitle,
