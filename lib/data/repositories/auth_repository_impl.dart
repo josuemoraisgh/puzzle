@@ -10,12 +10,12 @@ import '../datasources/moodle_datasource.dart';
 class AuthRepositoryImpl implements IAuthRepository {
   final IMoodleDatasource _moodle;
 
-  // Funções que apenas professores geralmente têm
+  // Funções exclusivas de professor (requerem papel de teacher/manager no Moodle).
+  // NÃO incluir mod_quiz_get_attempt_review nem core_grades_get_gradebook:
+  // essas funções também estão disponíveis para alunos (revisão própria, notas pessoais).
   static const _teacherFunctions = {
-    'mod_assign_save_grade',
-    'gradereport_grader_get_items_in_gradebook',
-    'core_grades_get_gradebook',
-    'mod_quiz_get_attempt_review',
+    'mod_assign_save_grade',                       // atribuir notas (teacher only)
+    'gradereport_grader_get_items_in_gradebook',   // relatório do avaliador (teacher only)
   };
 
   AuthRepositoryImpl(this._moodle);
