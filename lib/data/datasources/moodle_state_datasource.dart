@@ -764,17 +764,21 @@ class MoodleStateDatasource implements IStateDatasource {
       }
     });
 
-    final uri = Uri.parse('$baseUrl/webservice/rest/server.php').replace(
-      queryParameters: {
-        'wstoken': token,
-        'wsfunction': function,
-        'moodlewsrestformat': 'json',
-        ...params,
-      },
-    );
+    final uri = Uri.parse('$baseUrl/webservice/rest/server.php');
 
-    _log('  Fazendo requisição HTTP...');
-    final resp = await _client.get(uri);
+    final body = {
+      'wstoken': token,
+      'wsfunction': function,
+      'moodlewsrestformat': 'json',
+      ...params,
+    };
+
+    _log('  Fazendo requisição HTTP (POST)...');
+    final resp = await _client.post(
+      uri,
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body,
+    );
 
     if (resp.statusCode != 200) {
       _log('  ❌ HTTP ${resp.statusCode}');
