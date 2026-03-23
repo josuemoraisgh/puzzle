@@ -91,6 +91,14 @@ class _Header extends StatelessWidget {
             ],
           ),
         ),
+        IconButton(
+          icon: const Icon(Icons.logout, color: AppTheme.textSecondary),
+          tooltip: 'Sair',
+          onPressed: () async {
+            await context.read<AuthController>().logout();
+            if (context.mounted) context.go(AppRouter.login);
+          },
+        ),
       ],
     );
   }
