@@ -228,8 +228,8 @@ class ProfessorController extends ChangeNotifier {
     _addLog('loadQuestionsWithAnswers — attempt $attemptId');
     try {
       final questions = await _quizRepo.loadQuestionsWithAnswers(user, attemptId, 0);
-      _addLog('Total de questões retornadas: ${questions.length}');
       _questions = questions;
+      _addLog('Questões de múltipla escolha carregadas: ${questions.length}');
     } catch (e) {
       _addLog('ERRO em loadQuestionsWithAnswers: $e');
       rethrow;

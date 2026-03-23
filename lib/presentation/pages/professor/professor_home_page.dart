@@ -263,13 +263,27 @@ class _QuestionListPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (questions.isEmpty) {
-      if (log.isEmpty) {
-        return const Center(
-          child: Text('Nenhuma questão encontrada.',
-              style: TextStyle(color: AppTheme.textSecondary)),
-        );
-      }
-      return _LogPanel(log: log);
+      return Column(
+        children: [
+          const SizedBox(height: 24),
+          const Icon(Icons.help_outline_rounded,
+              color: AppTheme.textSecondary, size: 40),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Nenhuma questão de múltipla escolha encontrada.\n'
+              'Este questionário pode conter apenas questões abertas/dissertativas.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
+          ),
+          if (log.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Expanded(child: _LogPanel(log: log)),
+          ],
+        ],
+      );
     }
 
     return ListView.builder(

@@ -170,16 +170,23 @@ class QuizRepositoryImpl implements IQuizRepository {
       } catch (_) {}
     }
 
-    return allQuestions.map((q) {
+    final result = <QuestionEntity>[];
+    for (final q in allQuestions) {
+      // Filtra questões sem alternativas (dissertativas/abertas)
+      if (q.choices.isEmpty) continue;
+
       final reviewHtml = reviewHtmlBySlot[q.slot] ?? '';
-      if (reviewHtml.isEmpty) return q;
+      if (reviewHtml.isEmpty) {
+        result.add(q);
+        continue;
+      }
       final correctValues = MoodleHtmlParser.parseCorrectValues(reviewHtml);
       final newChoices = q.choices.map((c) => ParsedChoice(
         value: c.value,
         text: c.text,
         isCorrect: correctValues.contains(c.value),
       )).toList();
-      return QuestionEntity(
+      result.add(QuestionEntity(
         slot: q.slot,
         page: q.page,
         text: q.text,
@@ -188,8 +195,9 @@ class QuizRepositoryImpl implements IQuizRepository {
         inputBaseName: q.inputBaseName,
         seqCheck: q.seqCheck,
         type: q.type,
-      );
-    }).toList();
+      ));
+    }
+    return result;
   }
 
   @override
