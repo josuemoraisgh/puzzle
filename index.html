@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base href="/MoodleQuiz/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MoodleQuiz Live – Quiz interativo com Moodle">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MoodleQuiz Live">
+  <meta name="theme-color" content="#0D0D2B">
+
+  <title>MoodleQuiz Live</title>
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #0D0D2B;
+    }
+    /* Splash screen enquanto o Flutter carrega */
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0D0D2B, #1A0533);
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+    #splash-icon {
+      width: 88px;
+      height: 88px;
+      background: linear-gradient(135deg, #6C63FF, #3D5AFE);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(108,99,255,0.5);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    #splash-icon svg { fill: white; width: 48px; height: 48px; }
+    #splash h1 {
+      color: white;
+      font-family: sans-serif;
+      font-size: 24px;
+      margin: 16px 0 4px;
+      font-weight: 900;
+    }
+    #splash p { color: #B0B3CC; font-family: sans-serif; font-size: 14px; margin: 0; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.08); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Splash screen -->
+  <div id="splash">
+    <div id="splash-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 4h16v2H4zm2 4h12v2H6zm-2 4h16v2H4zm2 4h12v2H6z"/>
+      </svg>
+    </div>
+    <h1>MoodleQuiz Live</h1>
+    <p>Carregando...</p>
+  </div>
+
+  <script>
+    // Lê URL do Apps Script passada via query param ?gs=<url>
+    // e salva no localStorage para uso pelo Flutter
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const gs = params.get('gs');
+      if (gs) {
+        localStorage.setItem('flutter.gsheet_url', gs);
+      }
+    })();
+
+    // Remove splash quando o Flutter notifica que está pronto
+    window.addEventListener('flutter-first-frame', function () {
+      const splash = document.getElementById('splash');
+      splash.classList.add('hidden');
+      setTimeout(() => splash.remove(), 600);
+    });
+  </script>
+
+  <!-- Flutter bootstrap (gerado pelo build) -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
