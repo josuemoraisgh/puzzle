@@ -9,6 +9,17 @@ abstract class IStateDatasource {
   Future<Map<String, dynamic>> getState(
       String baseUrl, String token, int courseId);
 
+  /// Professor define qual quiz está selecionado para o curso.
+  ///
+  /// Isso mantém `quiz_id` e `quiz_name` sincronizados antes da primeira questão.
+  Future<void> setSelectedQuiz({
+    required String baseUrl,
+    required String token,
+    required int courseId,
+    required int quizId,
+    required String quizName,
+  });
+
   /// Professor libera uma questão (timer + página).
   Future<void> releaseQuestion({
     required String baseUrl,
@@ -306,6 +317,29 @@ class MoodleStateDatasource implements IStateDatasource {
     } catch (e) {
       rethrow;
     }
+  }
+
+  @override
+  Future<void> setSelectedQuiz({
+    required String baseUrl,
+    required String token,
+    required int courseId,
+    required int quizId,
+    required String quizName,
+  }) async {
+    await _ensureFields(baseUrl, token, courseId);
+    final current = await getState(baseUrl, token, courseId);
+
+    await _writeState(baseUrl, token, {
+      ...current,
+      'state': 'waiting',
+      'current_page': -1,
+      'current_slot': 0,
+      'quiz_id': quizId,
+      'course_id': courseId,
+      'quiz_name': quizName,
+      'ends_at': '',
+    });
   }
 
   Future<void> _writeState(

@@ -187,7 +187,8 @@ class QuizRepositoryImpl implements IQuizRepository {
 
     // Fallback: quiz com 1 questão por página (slot N está na página N-1)
     if (qMap == null && slot > 1) {
-      dlog.log('QUESTION', 'Não encontrada na page=0, tentando page=${slot - 1}');
+      dlog.log(
+          'QUESTION', 'Não encontrada na page=0, tentando page=${slot - 1}');
       qMap = await _findQuestionBySlot(
           user.baseUrl, user.token, attemptId, slot,
           moodlePage: slot - 1);
@@ -390,11 +391,15 @@ class QuizRepositoryImpl implements IQuizRepository {
       log('  ✓ slot=${q.slot} gabarito: $correctValues');
 
       // Debug: log detalhado do gabarito para o DebugLogger
-      DebugLogger.instance.log('GABARITO', 'slot=${q.slot} correctValues=$correctValues', data: {
-        'choices': q.choices.map((c) => 'value="${c.value}" text="${c.text}"').join(' | '),
-        'reviewHtmlLength': reviewHtml.length,
-        'reviewContainsRightAnswer': reviewHtml.contains('rightanswer'),
-      });
+      DebugLogger.instance.log(
+          'GABARITO', 'slot=${q.slot} correctValues=$correctValues',
+          data: {
+            'choices': q.choices
+                .map((c) => 'value="${c.value}" text="${c.text}"')
+                .join(' | '),
+            'reviewHtmlLength': reviewHtml.length,
+            'reviewContainsRightAnswer': reviewHtml.contains('rightanswer'),
+          });
       final newChoices = q.choices
           .map((c) => ParsedChoice(
                 value: c.value,
@@ -428,9 +433,10 @@ class QuizRepositoryImpl implements IQuizRepository {
 
     // Log detalhado do que está sendo enviado
     final choiceText = question.choices
-        .where((c) => c.value == choiceValue)
-        .map((c) => c.text)
-        .firstOrNull ?? '?';
+            .where((c) => c.value == choiceValue)
+            .map((c) => c.text)
+            .firstOrNull ??
+        '?';
 
     dlog.log('SUBMIT', 'Dados da questão', data: {
       'attemptId': attemptId,
@@ -443,7 +449,8 @@ class QuizRepositoryImpl implements IQuizRepository {
       'choiceText': choiceText,
       'totalChoices': question.choices.length,
       'allChoices': question.choices
-          .map((c) => 'value="${c.value}" text="${c.text}" correct=${c.isCorrect}')
+          .map((c) =>
+              'value="${c.value}" text="${c.text}" correct=${c.isCorrect}')
           .join(' | '),
     });
 
@@ -453,8 +460,7 @@ class QuizRepositoryImpl implements IQuizRepository {
     // No Moodle, variáveis de comportamento usam prefixo "-" (hífen),
     // enquanto metadados do engine usam ":" (e.g. :sequencecheck).
     // O botão "Verificar" do quiz se chama -submit, não :submit.
-    final submitKey =
-        question.inputBaseName.replaceFirst('answer', '-submit');
+    final submitKey = question.inputBaseName.replaceFirst('answer', '-submit');
 
     final answerData = {
       answerKey: choiceValue,
@@ -475,12 +481,14 @@ class QuizRepositoryImpl implements IQuizRepository {
 
     // Lê o estado da questão após a avaliação.
     try {
-      dlog.log('SUBMIT', 'Lendo estado pós-avaliação (getAttemptData page=${question.page})…');
+      dlog.log('SUBMIT',
+          'Lendo estado pós-avaliação (getAttemptData page=${question.page})…');
       final data = await _moodle.getAttemptData(
           user.baseUrl, user.token, attemptId, question.page);
 
       final questions = data['questions'] as List? ?? [];
-      dlog.log('SUBMIT', 'getAttemptData retornou ${questions.length} questão(ões)');
+      dlog.log(
+          'SUBMIT', 'getAttemptData retornou ${questions.length} questão(ões)');
 
       for (final q in questions) {
         final qMap = q as Map;
@@ -514,19 +522,23 @@ class QuizRepositoryImpl implements IQuizRepository {
               qHtml.contains('specificfeedback') ||
               qHtml.contains('generalfeedback');
           // Verifica se o div principal tem a classe de estado
-          final divClassMatch = RegExp(r'class="que\s+multichoice\s+immediatefeedback\s+(\w+)"').firstMatch(qHtml);
+          final divClassMatch =
+              RegExp(r'class="que\s+multichoice\s+immediatefeedback\s+(\w+)"')
+                  .firstMatch(qHtml);
           final queStateClass = divClassMatch?.group(1) ?? '';
 
           dlog.log('SUBMIT', '★ Diagnóstico completo', data: {
             'state_api': state.isEmpty ? '(vazio)' : state,
             'stateclass_api': stateclass.isEmpty ? '(vazio)' : stateclass,
             'status_api': status,
-            'queStateClass_html': queStateClass.isEmpty ? '(não encontrado)' : queStateClass,
+            'queStateClass_html':
+                queStateClass.isEmpty ? '(não encontrado)' : queStateClass,
             'html_correct': htmlHasCorrect,
             'html_incorrect': htmlHasIncorrect,
             'html_rightanswer': htmlHasRightAnswer,
             'html_feedback': htmlHasFeedback,
-            'htmlPreview_200': qHtml.length > 200 ? qHtml.substring(0, 200) : qHtml,
+            'htmlPreview_200':
+                qHtml.length > 200 ? qHtml.substring(0, 200) : qHtml,
           });
 
           // 1) Prioridade: campo state da API
@@ -535,11 +547,13 @@ class QuizRepositoryImpl implements IQuizRepository {
 
           // 2) Fallback: stateclass da API
           if (stateclass == 'correct') return true;
-          if (stateclass == 'incorrect' || stateclass == 'notanswered') return false;
+          if (stateclass == 'incorrect' || stateclass == 'notanswered')
+            return false;
 
           // 3) Fallback: classe no div principal do HTML
           if (queStateClass == 'correct') return true;
-          if (queStateClass == 'incorrect' || queStateClass == 'notanswered') return false;
+          if (queStateClass == 'incorrect' || queStateClass == 'notanswered')
+            return false;
 
           // 4) Fallback: pistas genéricas no HTML
           if (htmlHasCorrect && !htmlHasIncorrect) return true;
@@ -550,9 +564,12 @@ class QuizRepositoryImpl implements IQuizRepository {
             return false;
           }
 
-          dlog.log('SUBMIT', '⚠ Nenhum indicador de correção encontrado. Possíveis causas:');
-          dlog.log('SUBMIT', '  1) Quiz usa deferred feedback (não avalia na hora)');
-          dlog.log('SUBMIT', '  2) Opções de revisão não mostram "Se está correto" durante tentativa');
+          dlog.log('SUBMIT',
+              '⚠ Nenhum indicador de correção encontrado. Possíveis causas:');
+          dlog.log(
+              'SUBMIT', '  1) Quiz usa deferred feedback (não avalia na hora)');
+          dlog.log('SUBMIT',
+              '  2) Opções de revisão não mostram "Se está correto" durante tentativa');
 
           break;
         }
@@ -576,6 +593,21 @@ class QuizRepositoryImpl implements IQuizRepository {
     final data = await _state.getState(user.baseUrl, user.token, courseId);
     return QuizStateModel.fromJson(data);
   }
+
+  @override
+  Future<void> setSelectedQuiz({
+    required UserEntity user,
+    required int courseId,
+    required int quizId,
+    required String quizName,
+  }) =>
+      _state.setSelectedQuiz(
+        baseUrl: user.baseUrl,
+        token: user.token,
+        courseId: courseId,
+        quizId: quizId,
+        quizName: quizName,
+      );
 
   @override
   Future<void> releaseQuestion({

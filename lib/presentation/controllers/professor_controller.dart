@@ -103,12 +103,23 @@ class ProfessorController extends ChangeNotifier {
     _error = null;
     _log = [];
     try {
+      final courseId = _selectedCourse?.id;
+      if (courseId != null) {
+        await _quizRepo.setSelectedQuiz(
+          user: user,
+          courseId: courseId,
+          quizId: quiz.id,
+          quizName: quiz.name,
+        );
+      }
+
       _addLog('━━ Iniciando quiz ${quiz.name} (id=${quiz.id}) ━━');
       _addLog('Buscando/criando attempt…');
       _attemptId = await _quizRepo.startAttempt(user, quiz.id, onLog: _addLog);
       _addLog('Attempt ID: $_attemptId');
       await _loadAllQuestions(user, _attemptId!);
       _addLog('━━ Concluído: ${_questions.length} questão(ões) prontas ━━');
+      await _refreshStateAfterWrite();
     } catch (e) {
       _error = e.toString();
       _addLog('ERRO: $_error');

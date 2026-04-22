@@ -40,6 +40,7 @@ class StudentController extends ChangeNotifier {
   Timer? _pollTimer;
   int _lastSeenSlot = 0;
   bool _autoSubmitted = false;
+  bool _isRefreshingState = false; // guarda contra polls sobrepostos
 
   StudentController({
     required IQuizRepository quizRepo,
@@ -181,14 +182,15 @@ class StudentController extends ChangeNotifier {
         _hasAnswered ||
         _isSubmitting ||
         courseId == null) {
-      dlog.log('STUDENT', 'submitAnswer cancelado — pré-condição falhou', data: {
-        'choice': choice,
-        'question': q != null ? 'slot=${q.slot}' : 'null',
-        'attemptId': id,
-        'hasAnswered': _hasAnswered,
-        'isSubmitting': _isSubmitting,
-        'courseId': courseId,
-      });
+      dlog.log('STUDENT', 'submitAnswer cancelado — pré-condição falhou',
+          data: {
+            'choice': choice,
+            'question': q != null ? 'slot=${q.slot}' : 'null',
+            'attemptId': id,
+            'hasAnswered': _hasAnswered,
+            'isSubmitting': _isSubmitting,
+            'courseId': courseId,
+          });
       return;
     }
 
@@ -214,9 +216,11 @@ class StudentController extends ChangeNotifier {
       // Moodle é a única fonte de verdade.
       final correct = await _quizRepo.submitPage(user, id, q, choice);
 
-      dlog.log('STUDENT', '★ Resultado: ${correct ? "CORRETO ✓" : "INCORRETO ✗"}', data: {
-        'score_a_registrar': correct ? baseScore : 0,
-      });
+      dlog.log(
+          'STUDENT', '★ Resultado: ${correct ? "CORRETO ✓" : "INCORRETO ✗"}',
+          data: {
+            'score_a_registrar': correct ? baseScore : 0,
+          });
 
       // Registra pontuação no leaderboard
       await _quizRepo.submitScore(
@@ -244,7 +248,7 @@ class StudentController extends ChangeNotifier {
     _pollTimer?.cancel();
     _refreshState(user);
     _pollTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => _refreshState(user));
+        Timer.periodic(const Duration(seconds: 1), (_) => _refreshState(user));
   }
 
   void stopPolling() {
@@ -257,11 +261,29 @@ class StudentController extends ChangeNotifier {
   Future<void> _refreshState(UserEntity user) async {
     final courseId = _selectedCourseId;
     if (courseId == null) return;
+    if (_isRefreshingState) return;
+    _isRefreshingState = true;
+    final dlog = DebugLogger.instance;
     try {
       final newState = await _quizRepo.getQuizState(user, courseId);
+      dlog.log('STUDENT_POLL', 'estado lido', data: {
+        'status': newState.status.name,
+        'slot': newState.currentSlot,
+        'page': newState.currentPage,
+        'quizId': newState.quizId,
+        'lastSeenSlot': _lastSeenSlot,
+        'attemptId': _attemptId,
+        'hasQuestion': _currentQuestion != null,
+      });
+
+      // Atualiza _quizState ANTES de qualquer notifyListeners() intermediário
+      // para evitar que a UI continue exibindo o estado anterior enquanto a
+      // questão está sendo carregada.
+      _quizState = newState;
 
       // Detecta reset do quiz (voltou ao estado 'waiting' após uma rodada)
       if (newState.isWaiting && _lastSeenSlot > 0) {
+        dlog.log('STUDENT_POLL', 'reset detectado (voltou para waiting)');
         _lastSeenSlot = 0;
         _selectedChoice = null;
         _selectedChoiceText = null;
@@ -276,6 +298,10 @@ class StudentController extends ChangeNotifier {
       }
 
       if (newState.isActive && newState.currentSlot != _lastSeenSlot) {
+        dlog.log('STUDENT_POLL', '★ NOVA QUESTÃO LIBERADA', data: {
+          'slot': newState.currentSlot,
+          'quizId': newState.quizId,
+        });
         // Marca o slot imediatamente para evitar re-entradas no próximo poll
         _lastSeenSlot = newState.currentSlot;
         _selectedChoice = null;
@@ -287,6 +313,10 @@ class StudentController extends ChangeNotifier {
 
         if (newState.quizId > 0) {
           await ensureAttempt(user, newState.quizId);
+          dlog.log('STUDENT_POLL', 'ensureAttempt resultado', data: {
+            'attemptId': _attemptId,
+            'attemptError': _attemptError,
+          });
         }
 
         final id = _attemptId;
@@ -297,11 +327,18 @@ class StudentController extends ChangeNotifier {
             _currentQuestion =
                 await _quizRepo.getQuestion(user, id, newState.currentSlot);
             _error = null;
+            dlog.log('STUDENT_POLL', '✓ questão carregada', data: {
+              'slot': _currentQuestion?.slot,
+            });
           } catch (e) {
             _error = e.toString();
+            dlog.log('STUDENT_POLL', '✗ ERRO ao carregar questão: $e');
           } finally {
             _isLoadingQuestion = false;
           }
+        } else {
+          dlog.log('STUDENT_POLL',
+              'sem attemptId válido — questão não será carregada neste ciclo');
         }
       }
 
@@ -311,6 +348,7 @@ class StudentController extends ChangeNotifier {
           newState.currentSlot == _lastSeenSlot &&
           _currentQuestion == null &&
           !_isLoadingQuestion) {
+        dlog.log('STUDENT_POLL', 'retry: questão ainda não carregada');
         if (_attemptId == null && newState.quizId > 0) {
           await ensureAttempt(user, newState.quizId);
         }
@@ -322,8 +360,10 @@ class StudentController extends ChangeNotifier {
             _currentQuestion =
                 await _quizRepo.getQuestion(user, id, newState.currentSlot);
             _error = null;
+            dlog.log('STUDENT_POLL', '✓ retry: questão carregada');
           } catch (e) {
             _error = e.toString();
+            dlog.log('STUDENT_POLL', '✗ retry ERRO: $e');
           } finally {
             _isLoadingQuestion = false;
           }
@@ -343,12 +383,19 @@ class StudentController extends ChangeNotifier {
         await finishAttempt(user);
       }
 
-      _quizState = newState;
-      _scores = await _quizRepo.getScores(user, courseId);
+      // getScores em try isolado: falha aqui não pode ocultar a questão.
+      try {
+        _scores = await _quizRepo.getScores(user, courseId);
+      } catch (e) {
+        dlog.log('STUDENT_POLL', 'getScores falhou: $e');
+      }
       notifyListeners();
     } catch (e) {
       _error = e.toString();
+      dlog.log('STUDENT_POLL', '✗ ERRO no polling: $e');
       notifyListeners();
+    } finally {
+      _isRefreshingState = false;
     }
   }
 

@@ -38,6 +38,14 @@ abstract class IQuizRepository {
 
   Future<QuizStateEntity> getQuizState(UserEntity user, int courseId);
 
+  /// Atualiza no estado compartilhado qual quiz está selecionado no curso.
+  Future<void> setSelectedQuiz({
+    required UserEntity user,
+    required int courseId,
+    required int quizId,
+    required String quizName,
+  });
+
   Future<void> releaseQuestion({
     required UserEntity user,
     required int courseId,
