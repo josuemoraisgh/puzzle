@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../../core/utils/debug_logger.dart';
 import 'moodle_datasource.dart';
 
 /// Interface – estado compartilhado do quiz via Moodle mod_data.
@@ -344,6 +345,7 @@ class MoodleStateDatasource implements IStateDatasource {
 
   Future<void> _writeState(
       String baseUrl, String token, Map<String, dynamic> state) async {
+    final dlog = DebugLogger.instance;
     final jsonStr = jsonEncode(state);
 
     // O Moodle mod_data espera que os valores de textarea sejam JSON-encoded:
@@ -365,17 +367,78 @@ class MoodleStateDatasource implements IStateDatasource {
       'data[6][value]': jsonEncode('[]'),
     };
 
+    dlog.log('STATE_WRITE', 'gravando estado', data: {
+      'entryId': _stateEntryId,
+      'state': state,
+    });
+
     if (_stateEntryId == null) {
       final res = await _callWs(baseUrl, token, 'mod_data_add_entry', {
         'databaseid': _dataid!.toString(),
         ...data,
       });
       _stateEntryId = (res['newentryid'] as num?)?.toInt();
+      dlog.log('STATE_WRITE', '✓ add_entry ok', data: {
+        'newEntryId': _stateEntryId,
+      });
     } else {
-      await _callWs(baseUrl, token, 'mod_data_update_entry', {
+      final res = await _callWs(baseUrl, token, 'mod_data_update_entry', {
         'entryid': _stateEntryId!.toString(),
         ...data,
       });
+      final updated = res['updated'] == true;
+      final notifications = res['generalnotifications'];
+      final fieldNotifs = res['fieldnotifications'];
+      dlog.log('STATE_WRITE', 'update_entry resposta', data: {
+        'updated': updated,
+        'generalnotifications': notifications,
+        'fieldnotifications': fieldNotifs,
+      });
+
+      if (!updated) {
+        // Update falhou (entryId stale, sem permissão, etc.).
+        // Tenta recuperar buscando entryId atual e reescrevendo.
+        dlog.log(
+            'STATE_WRITE', '⚠ update falhou — invalidando entryId e recriando');
+        _stateEntryId = null;
+        // Re-descobre entryId real
+        try {
+          final entries = await _fetchAllEntries(baseUrl, token);
+          final stateEntry =
+              entries.firstWhere((e) => e['type'] == 'state', orElse: () => {});
+          if (stateEntry.isNotEmpty) {
+            _stateEntryId = stateEntry['_entry_id'] as int?;
+            dlog.log('STATE_WRITE', 'entryId redescoberto',
+                data: {'entryId': _stateEntryId});
+          }
+        } catch (e) {
+          dlog.log('STATE_WRITE', 'erro redescobrindo entryId: $e');
+        }
+        // Tenta novamente: update se achou; senão add
+        if (_stateEntryId != null) {
+          final res2 = await _callWs(baseUrl, token, 'mod_data_update_entry', {
+            'entryid': _stateEntryId!.toString(),
+            ...data,
+          });
+          dlog.log('STATE_WRITE', 'retry update', data: {
+            'updated': res2['updated'],
+            'fieldnotifications': res2['fieldnotifications'],
+          });
+          if (res2['updated'] != true) {
+            throw StateException(
+                'Falha ao atualizar mq_state. Verifique permissões do professor '
+                '(mod/data:manageentries) e os campos do Database.');
+          }
+        } else {
+          final res2 = await _callWs(baseUrl, token, 'mod_data_add_entry', {
+            'databaseid': _dataid!.toString(),
+            ...data,
+          });
+          _stateEntryId = (res2['newentryid'] as num?)?.toInt();
+          dlog.log('STATE_WRITE', 'add após update falho',
+              data: {'newEntryId': _stateEntryId});
+        }
+      }
     }
   }
 

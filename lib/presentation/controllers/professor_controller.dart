@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/utils/debug_logger.dart';
 import '../../domain/entities/moodle_course.dart';
 import '../../domain/entities/moodle_quiz.dart';
 import '../../domain/entities/question_entity.dart';
@@ -136,11 +137,30 @@ class ProfessorController extends ChangeNotifier {
   }
 
   Future<void> releaseQuestion(QuestionEntity q) async {
+    final dlog = DebugLogger.instance;
     final user = _user;
     final courseId = _selectedCourse?.id;
-    if (_selectedQuiz == null || user == null || courseId == null) return;
+    if (_selectedQuiz == null || user == null || courseId == null) {
+      dlog.log('PROF_RELEASE', '✗ PRÉ-CONDIÇÃO FALHOU', data: {
+        'selectedQuiz': _selectedQuiz?.name,
+        'user': user?.fullname,
+        'courseId': courseId,
+      });
+      _error = 'Não foi possível liberar: usuário/curso/quiz não selecionado.';
+      notifyListeners();
+      return;
+    }
     final index = _questions.indexOf(q);
     final page = index >= 0 ? index : _questions.length;
+    dlog.log('PROF_RELEASE', '★ Liberando questão', data: {
+      'courseId': courseId,
+      'quizId': _selectedQuiz!.id,
+      'quizName': _selectedQuiz!.name,
+      'page': page,
+      'slot': q.slot,
+      'duration': _selectedDuration,
+      'totalPages': _questions.length,
+    });
     _setLoading(true);
     _error = null;
     try {
@@ -154,9 +174,16 @@ class ProfessorController extends ChangeNotifier {
         quizName: _selectedQuiz!.name,
         quizId: _selectedQuiz!.id,
       );
+      dlog.log('PROF_RELEASE', '✓ release escrito no mq_state');
       await _refreshStateAfterWrite();
-    } catch (e) {
+      dlog.log('PROF_RELEASE', 'estado pós-write', data: {
+        'status': _quizState.status.name,
+        'slot': _quizState.currentSlot,
+      });
+    } catch (e, st) {
       _error = e.toString();
+      dlog.log('PROF_RELEASE', '✗ ERRO ao liberar: $e');
+      debugPrint(st.toString());
     } finally {
       _setLoading(false);
     }
