@@ -1,0 +1,7 @@
+{
+  "student_url": "https://lasec-ufu.github.io/MoodleQuiz/",
+  "moodle_url": "https://moodle.ufu.br",
+  "quiz_title": "Quiz Interativo",
+  "default_question_time": 30,
+  "question_time_options": "15,20,30,45,60,90,120"
+}
